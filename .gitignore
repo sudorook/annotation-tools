@@ -1,3 +1,6 @@
+*.sql
+*.db
+*.dmp
 *.egg-info
 *.zip
 *.xz
