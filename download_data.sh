@@ -11,7 +11,7 @@ set -eu
 #
 # Globals
 #
-database_dir=`pwd`
+database_dir=raw_data
 
 # Simple wrapper function that will check the MD5 sum for a file against the
 # sum downloaded from the server. Probably redundant with `wget -nc`.
@@ -30,6 +30,9 @@ function check_md5sum {
     return 1
   fi
 }
+
+mkdir -p ${database_dir}
+cd ${database_dir}
 
 
 #

@@ -11,7 +11,7 @@ set -eu
 #
 
 # Globals
-database_dir=`pwd`
+database_dir=raw_data
 gzip=pigz
 
 # Check that pigz is installed before doing anything.
@@ -20,6 +20,8 @@ if ! test $(command -v ${gzip}); then
   exit 3
 fi
 
+mkdir -p ${database_dir}
+cd ${database_dir}
 
 # Extract: nr (non-redundant) proteins
 nr_archive="nr.gz"
