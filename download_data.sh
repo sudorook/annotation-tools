@@ -93,7 +93,6 @@ wget -nc ${taxonomy_url}/${taxonomy_archive}.md5
 # Check data integrity before decompressing.
 if `check_md5sum "${taxonomy_archive}"`; then
   echo "MD5 match."
-  rm ${taxonomy_archive}
   rm ${taxonomy_archive}.md5
 else
   echo "MD5 mismatch. Exiting."
