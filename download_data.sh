@@ -52,8 +52,8 @@ wget -nc ${nr_url}/${nr_archive}.md5
 # Check data integrity before decompressing.
 if `check_md4sum "${nr_archive}"`; then
   echo "MD5 success. Extracting ${nr_archive}."
-  rm ${nr_archive}.md5
   ${gzip} -d ${nr_archive}
+  rm ${nr_archive}.md5
   chmod -w,o-r nr
 else
   echo "MD5 mismatch. Exiting."
@@ -75,9 +75,9 @@ wget -nc ${accession2taxid_url}/${prot_archive}.md5
 # Check data integrity for prot database before decompressing.
 if `check_md5sum "${dead_prot_archive}"`; then
   echo "MD5 success. Extracting ${dead_prot_archive}."
-  rm ${dead_prot_archive}.md5
   ${gzip} -d ${dead_prot_archive}
-  chmod -w,o-r dead_prot.accessiont2taxid
+  rm ${dead_prot_archive}.md5
+  chmod -w,o-r dead_prot.accession2taxid
 else
   echo "MD5 mismatch. Exiting."
   exit 3
@@ -86,9 +86,9 @@ fi
 # Check data integrity for prot database before decompressing.
 if `check_md5sum "${prot_archive}"`; then
   echo "MD5 success. Extracting ${prot_archive}."
-  rm ${prot_archive}.md5
   ${gzip} -d ${prot_archive}
-  chmod -w,o-r prot.accessiont2taxid
+  rm ${prot_archive}.md5
+  chmod -w,o-r prot.accession2taxid
 else
   echo "MD5 mismatch. Exiting."
   exit 3
@@ -106,6 +106,7 @@ wget -nc ${taxonomy_url}/${taxonomy_archive}.md5
 if `check_md5sum "${taxonomy_archive}"`; then
   echo "MD5 success. Extracting ${taxonomy_archive}."
   ${gzip} -dc ${taxonomy_archive} | tar xf - fullnamelineage.dmp
+  rm ${taxonomy_archive}
   rm ${taxonomy_archive}.md5
   chmod -w,o-r fullnamelineage.dmp
 else
