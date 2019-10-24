@@ -3,7 +3,6 @@
 
 import sqlite3
 from Bio import SeqIO
-from Bio.SeqRecord import SeqRecord
 
 
 def import_accession2taxid(file_in, db_out, table_name):
@@ -77,7 +76,7 @@ def import_taxonomy(file_in, db_out, table_name):
 
 def import_nr(file_in, db_out, table_name, fts=False):
     """ Import the nr (non-redundant) protein sequences. """
-    fields = ",".join(["[taxid]", "[species]", "[lineage]"])
+    fields = ",".join(["[accession.version]", "[sequence]"])
 
     conn = sqlite3.connect(db_out)
     cur = conn.cursor()
@@ -106,10 +105,10 @@ def import_nr(file_in, db_out, table_name, fts=False):
     cur.executescript(cmd)
 
     with open(file_in, "r") as handle:
-        for line in handle.readlines():
-            row = tuple([field.strip() for field in line.split("|")][:-1])
+        for record in SeqIO.parse(handle, "fasta"):
+            row = tuple([record.id, str(record.seq)])
             cmd = "INSERT INTO %s(" % (table_name) + fields + ")\n"
-            cmd += "VALUES(?,?,?);"
+            cmd += "VALUES(?,?);"
             cur.execute(cmd, row)
     conn.commit()
     conn.close()
