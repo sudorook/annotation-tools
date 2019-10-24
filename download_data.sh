@@ -98,3 +98,14 @@ else
   echo "MD5 mismatch. Exiting."
   exit 3
 fi
+
+
+#
+# Download: Pfam
+#
+pfam_url="ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/database_files"
+# pfam_sql="pfamseq.sql.gz"
+pfam_archive="pfamseq.txt.gz"
+
+# wget -nc "${pfam_url}/${pfam_sql}"
+wget -nc "${pfam_url}/${pfam_archive}"

@@ -26,18 +26,17 @@ cd ${database_dir}
 # Extract: nr (non-redundant) proteins
 nr_archive="nr.gz"
 
-${gzip} -d ${nr_archive}
+${gzip} -vd ${nr_archive}
 chmod -w,o-r nr
-
 
 # Extract: Accession to TaxID
 dead_prot_archive="dead_prot.accession2taxid.gz"
 prot_archive="prot.accession2taxid.gz"
 
-${gzip} -d ${dead_prot_archive}
+${gzip} -vd ${dead_prot_archive}
 chmod -w,o-r dead_prot.accession2taxid
 
-${gzip} -d ${prot_archive}
+${gzip} -vd ${prot_archive}
 chmod -w,o-r prot.accession2taxid
 
 # Extract: Taxonomy
@@ -46,3 +45,9 @@ taxonomy_archive="new_taxdump.tar.gz"
 ${gzip} -dc ${taxonomy_archive} | tar xf - fullnamelineage.dmp
 rm ${taxonomy_archive}
 chmod -w,o-r fullnamelineage.dmp
+
+# Extract: Pfam
+pfam_archive="pfamseq.txt.gz"
+
+${gzip} -vd "${pfam_archive}"
+chmod -w,o-r pfamseq.txt
