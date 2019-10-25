@@ -108,10 +108,8 @@ def save_sequences(sequence, sequence_file, sequence_format):
 
 def get_sequence_ncbi_id(sequence):
     """ Get sequence accession number """
-    start = time.time()
     with sqlite3.connect(NR_FTS) as conn:
         cur = conn.cursor()
-        #  print("searching: %s" % sequence)
         #  cur.execute("SELECT `accession.version` from nr_fts where sequence MATCH '%s'" % sequence)
         cur.execute(
             "SELECT accession FROM nr WHERE sequence MATCH '%s'" % sequence
@@ -125,9 +123,6 @@ def get_sequence_ncbi_id(sequence):
                 accession = ",".join([acc[0] for acc in res])
         else:
             accession = "unknown"
-    end = time.time()
-    #  print("Accession: " + accession)
-    #  print("Accession ID search took %f sec" % (end-start))
     return accession
 
 
@@ -155,7 +150,6 @@ def get_gi_number(identifier, delimiter="|"):
 
 def get_accession_taxid(accession_number):
     """ Get the TaxID using the accession number. """
-    start = time.time()
     with sqlite3.connect(PROT_DB) as conn:
         cur = conn.cursor()
         cur.execute(
@@ -188,15 +182,11 @@ def get_accession_taxid(accession_number):
                     taxid = ",".join([acc[0] for acc in res])
             else:
                 taxid = "unknown"
-    end = time.time()
-    #  print("TaxID: %s" % taxid)
-    #  print("TaxID search took %f sec" % (end-start))
     return taxid
 
 
 def get_gi_taxid(gi_number):
     """ Get the TaxID using the GI number. """
-    start = time.time()
     with sqlite3.connect(PROT_DB) as conn:
         cur = conn.cursor()
         cur.execute("SELECT taxid FROM prot WHERE gi = '%s'" % gi_number)
@@ -225,15 +215,11 @@ def get_gi_taxid(gi_number):
                     taxid = ",".join([i[0] for i in res])
             else:
                 taxid = False
-    end = time.time()
-    #  print("TaxID: %s" % taxid)
-    #  print("TaxID search took %f sec" % (end-start))
     return taxid
 
 
 def get_species_lineage(taxid):
     """ Get the species and lineage fields from the taxonomy database. """
-    start = time.time()
     with sqlite3.connect(TAXONOMY_DB) as conn:
         cur = conn.cursor()
         cur.execute(
@@ -247,10 +233,6 @@ def get_species_lineage(taxid):
         else:
             species = "unknown"
             lineage = "unknown"
-    end = time.time()
-    #  print("Species: %s" % species)
-    #  print("Lineage: %s" % lineage)
-    #  print("Taxonomy search took %f sec" % (end-start))
     return species, lineage
 
 
@@ -299,10 +281,8 @@ def main():
 
     if options.alignment:
         input_data = load_alignment(options.input, options.format)
-        #  print(alignment)
     else:
         input_data = load_sequences(options.input, options.format)
-        #  print(sequences)
 
     start = time.time()
     if options.type == "pfam":
