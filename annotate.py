@@ -229,7 +229,7 @@ def get_species_lineage(taxid):
         if res:
             if len(res) == 1:
                 species = res[0][0]
-                lineage = res[0][1]
+                lineage = res[0][1].replace(";", ",").strip()
         else:
             species = "unknown"
             lineage = "unknown"
@@ -262,6 +262,7 @@ def annotate_ncbi(alignment):
         if taxid:
             species, lineage = get_species_lineage(taxid)
         record.id = record.id + "|" + species + "|" + lineage
+        record.description = ""
         print(record.id)
 
     return alignment
