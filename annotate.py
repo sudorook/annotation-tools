@@ -12,16 +12,12 @@ from Bio import AlignIO
 
 # Globals
 
-#  PFAMSEQ_DB = "data/pfamseq.db"
-#  PFAMSEQ_FTS = "data/pfamseq_fts4.db"
-PFAMSEQ_DB = "../Pfam/pfamseq.db"
-PFAMSEQ_FTS = "../Pfam/pfamseq-fts4.db"
+PFAMSEQ_DB = "data/pfamseq.db"
+PFAMSEQ_FTS = "data/pfamseq_fts4.db"
 DEADPROT_DB = "data/dead_prot_accession2taxid.db"
 PROT_DB = "data/prot_accession2taxid.db"
-#  NR_DB = "data/nr.db"
-#  NR_FTS = "data/nr_fts4.db"
-NR_DB = "../NCBI/nr/FASTA/nr.db"
-NR_FTS = "../NCBI/nr/FASTA/nr_fts4.db"
+NR_DB = "data/nr.db"
+NR_FTS = "data/nr_fts4.db"
 TAXONOMY_DB = "data/taxonomy.db"
 
 
@@ -110,10 +106,7 @@ def get_sequence_ncbi_id(sequence):
     """ Get sequence accession number """
     with sqlite3.connect(NR_FTS) as conn:
         cur = conn.cursor()
-        #  cur.execute("SELECT `accession.version` from nr_fts where sequence MATCH '%s'" % sequence)
-        cur.execute(
-            "SELECT accession FROM nr WHERE sequence MATCH '%s'" % sequence
-        )
+        cur.execute("SELECT `accession.version` FROM nr_fts WHERE sequence MATCH '%s'" % sequence)
         res = cur.fetchall()
         if res:
             if len(res) == 1:
@@ -244,6 +237,7 @@ def annotate_ncbi(alignment):
             record.id = "ref|" + get_sequence_ncbi_id(
                 str(record.seq).replace("-", "")
             )
+
         # Use an ID (accession or GI) to get the taxID
         seq_id = get_accession_number(record.id)
         if seq_id:
