@@ -106,7 +106,10 @@ def get_sequence_ncbi_id(sequence):
     """ Get sequence accession number """
     with sqlite3.connect(NR_FTS) as conn:
         cur = conn.cursor()
-        cur.execute("SELECT `accession.version` FROM nr_fts WHERE sequence MATCH '%s'" % sequence)
+        cur.execute(
+            "SELECT `accession.version` FROM nr_fts WHERE sequence MATCH '%s'"
+            % sequence
+        )
         res = cur.fetchall()
         if res:
             if len(res) == 1:
@@ -266,15 +269,22 @@ def get_annotations_pfamid(pfam_id):
     """ Get annotations by using pfam ID as the query. """
     with sqlite3.connect(PFAMSEQ_DB) as conn:
         cur = conn.cursor()
-        cur.execute("SELECT pfamseq_id,description,species,taxonomy FROM pfamseq WHERE pfamseq_id = ?", (pfam_id,))
+        cur.execute(
+            "SELECT pfamseq_id,description,species,taxonomy FROM pfamseq WHERE pfamseq_id = ?",
+            (pfam_id,),
+        )
         res = cur.fetchall()
         if res:
             if len(res) == 1:
                 pfam_id = res[0][0]
                 pfam_name = res[0][1]
                 pfam_species = res[0][2]
-                pfam_lineage = ",".join([field.strip() for field in res[0][3].split(";")])
-                header = "|".join([pfam_id, pfam_name, pfam_species, pfam_lineage])
+                pfam_lineage = ",".join(
+                    [field.strip() for field in res[0][3].split(";")]
+                )
+                header = "|".join(
+                    [pfam_id, pfam_name, pfam_species, pfam_lineage]
+                )
                 print(header)
             else:
                 print("Multiple records found.")
@@ -288,15 +298,22 @@ def get_annotations_no_pfamid(sequence):
     """ Get annotations by querying the sequence. """
     with sqlite3.connect(PFAMSEQ_FTS) as conn:
         cur = conn.cursor()
-        cur.execute("SELECT pfamseq_id,description,species,taxonomy FROM pfamseq_fts WHERE sequence MATCH ?", (sequence,))
+        cur.execute(
+            "SELECT pfamseq_id,description,species,taxonomy FROM pfamseq_fts WHERE sequence MATCH ?",
+            (sequence,),
+        )
         res = cur.fetchall()
         if res:
             if len(res) == 1:
                 pfam_id = res[0][0]
                 pfam_name = res[0][1]
                 pfam_species = res[0][2]
-                pfam_lineage = ",".join([field.strip() for field in res[0][3].split(";")])
-                header = "|".join([pfam_id, pfam_name, pfam_species, pfam_lineage])
+                pfam_lineage = ",".join(
+                    [field.strip() for field in res[0][3].split(";")]
+                )
+                header = "|".join(
+                    [pfam_id, pfam_name, pfam_species, pfam_lineage]
+                )
                 header = "|".join(res[0])
                 print(header)
             else:
@@ -312,14 +329,18 @@ def annotate_pfam(alignment):
     for record in alignment:
         print(record.id)
         if not record.id:
-            header = get_annotations_no_pfamid(str(record.seq).replace("-", ""))
+            header = get_annotations_no_pfamid(
+                str(record.seq).replace("-", "")
+            )
             record.id = header
         else:
             pfam_id = record.id.split("|")[0]
             header = get_annotations_pfamid(pfam_id)
             if header == "unknown":
                 print("Pfam ID: %s not found. Querying sequence." % pfam_id)
-                header = get_annotations_no_pfamid(str(record.seq).replace("-", ""))
+                header = get_annotations_no_pfamid(
+                    str(record.seq).replace("-", "")
+                )
             record.id = header
             record.name = ""
             record.description = ""
