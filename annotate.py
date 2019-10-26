@@ -235,7 +235,6 @@ def get_species_lineage(taxid):
 def annotate_ncbi(alignment):
     """ Loop over sequences and fill in annotations using nr. """
     for record in alignment:
-        print(record.id)
         if not record.id:
             record.id = "ref|" + get_sequence_ncbi_id(
                 str(record.seq).replace("-", "")
@@ -260,8 +259,6 @@ def annotate_ncbi(alignment):
             species, lineage = get_species_lineage(taxid)
         record.id = record.id + "|" + species + "|" + lineage
         record.description = ""
-        print(record.id)
-
     return alignment
 
 
@@ -285,12 +282,11 @@ def get_annotations_pfamid(pfam_id):
                 header = "|".join(
                     [pfam_id, pfam_name, pfam_species, pfam_lineage]
                 )
-                print(header)
             else:
                 print("Multiple records found.")
                 header = ",".join(["|".join(record) for record in res])
         else:
-            header = "unknown"
+            header = False
     return header
 
 
@@ -315,19 +311,17 @@ def get_annotations_no_pfamid(sequence):
                     [pfam_id, pfam_name, pfam_species, pfam_lineage]
                 )
                 header = "|".join(res[0])
-                print(header)
             else:
                 print("Multiple records found.")
                 header = ",".join(["|".join(record) for record in res])
         else:
-            header = "unknown"
+            header = False
     return header
 
 
 def annotate_pfam(alignment):
     """ Loop over sequences and fill in annotations using Pfam. """
     for record in alignment:
-        print(record.id)
         if not record.id:
             header = get_annotations_no_pfamid(
                 str(record.seq).replace("-", "")
@@ -336,15 +330,15 @@ def annotate_pfam(alignment):
         else:
             pfam_id = record.id.split("|")[0]
             header = get_annotations_pfamid(pfam_id)
-            if header == "unknown":
-                print("Pfam ID: %s not found. Querying sequence." % pfam_id)
+            if not header:
+                print("Pfam ID %s not found. Querying sequence." % pfam_id)
                 header = get_annotations_no_pfamid(
                     str(record.seq).replace("-", "")
                 )
-            record.id = header
-            record.name = ""
-            record.description = ""
-        print(record.id)
+            if header:
+                record.id = header
+                record.name = ""
+                record.description = ""
     return alignment
 
 
