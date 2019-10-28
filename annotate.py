@@ -20,6 +20,7 @@ NR_DB = "data/nr.db"
 NR_FTS = "data/nr_fts4.db"
 TAXONOMY_DB = "data/taxonomy.db"
 
+DELIMITER = "|"
 
 # Functions
 
@@ -51,6 +52,13 @@ def parse_options():
         dest="output",
         required=True,
         help="Output file for annotated sequences",
+    )
+    parser.add_argument(
+        "-d",
+        "--delimiter",
+        dest="delimiter",
+        default="|",
+        help="Delimiter for fields in FASTA headers",
     )
     parser.add_argument(
         "-t", "--type", dest="type", required=True, help="'pfam' or 'ncbi'"
@@ -122,9 +130,10 @@ def get_sequence_ncbi_id(sequence):
     return accession
 
 
-def get_accession_number(identifier, delimiter="|"):
+def get_accession_number(identifier):
     """ Parse the accession number from the header """
-    fields = identifier.split(delimiter)
+    global DELIMITER
+    fields = identifier.split(DELIMITER)
     try:
         idx = fields.index("ref") + 1
         return fields[idx]
@@ -133,9 +142,10 @@ def get_accession_number(identifier, delimiter="|"):
         return False
 
 
-def get_gi_number(identifier, delimiter="|"):
+def get_gi_number(identifier):
     """ Parse the gi number from the header """
-    fields = identifier.split(delimiter)
+    global DELIMITER
+    fields = identifier.split(DELIMITER)
     try:
         idx = fields.index("gi") + 1
         return fields[idx]
@@ -347,6 +357,9 @@ def main():
     options = parse_options()
     if not check_databases():
         sys.exit("Cannot find required database files. Exiting.")
+
+    global DELIMITER
+    DELIMITER = options.delimiter
 
     if options.alignment:
         input_data = load_alignment(options.input, options.format)
