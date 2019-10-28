@@ -115,8 +115,8 @@ def get_sequence_ncbi_id(sequence):
     with sqlite3.connect(NR_FTS) as conn:
         cur = conn.cursor()
         cur.execute(
-            "SELECT `accession.version` FROM nr_fts WHERE sequence MATCH '%s'"
-            % sequence
+            "SELECT `accession.version` FROM nr_fts WHERE sequence MATCH ?",
+            (sequence,),
         )
         res = cur.fetchall()
         if res:
@@ -159,8 +159,8 @@ def get_accession_taxid(accession_number):
     with sqlite3.connect(PROT_DB) as conn:
         cur = conn.cursor()
         cur.execute(
-            "SELECT taxid FROM prot WHERE `accession.version` = '%s'"
-            % accession_number
+            "SELECT taxid FROM prot WHERE `accession.version` = ?",
+            (accession_number,),
         )
         res = cur.fetchall()
         if res:
@@ -172,12 +172,12 @@ def get_accession_taxid(accession_number):
         else:
             taxid = "unknown"
     if taxid == "unknown":
-        print("accession %s not found. Trying dead_prot." % accession_number)
+        print("Accession %s not found. Trying dead_prot." % accession_number)
         with sqlite3.connect(DEADPROT_DB) as conn:
             cur = conn.cursor()
             cur.execute(
-                "SELECT taxid FROM dead_prot WHERE `accession.version` = '%s'"
-                % accession_number
+                "SELECT taxid FROM dead_prot WHERE `accession.version` = ?",
+                (accession_number,),
             )
             res = cur.fetchall()
             if res:
@@ -195,7 +195,7 @@ def get_gi_taxid(gi_number):
     """ Get the TaxID using the GI number. """
     with sqlite3.connect(PROT_DB) as conn:
         cur = conn.cursor()
-        cur.execute("SELECT taxid FROM prot WHERE gi = '%s'" % gi_number)
+        cur.execute("SELECT taxid FROM prot WHERE gi = ?", (gi_number,))
         res = cur.fetchall()
         if res:
             if len(res) == 1:
@@ -210,7 +210,7 @@ def get_gi_taxid(gi_number):
         with sqlite3.connect(DEADPROT_DB) as conn:
             cur = conn.cursor()
             cur.execute(
-                "SELECT taxid FROM dead_prot WHERE gi = '%s'" % gi_number
+                "SELECT taxid FROM dead_prot WHERE gi = ?", (gi_number,)
             )
             res = cur.fetchall()
             if res:
@@ -229,7 +229,7 @@ def get_species_lineage(taxid):
     with sqlite3.connect(TAXONOMY_DB) as conn:
         cur = conn.cursor()
         cur.execute(
-            "SELECT species,lineage FROM taxonomy WHERE taxid = '%s'" % taxid
+            "SELECT species,lineage FROM taxonomy WHERE taxid = ?", (taxid,)
         )
         res = cur.fetchall()
         if res:
@@ -267,8 +267,8 @@ def annotate_ncbi(alignment):
         # Use the TaxID to get the species and lineage information
         if taxid:
             species, lineage = get_species_lineage(taxid)
-        record.id = record.id + "|" + species + "|" + lineage
-        record.description = ""
+            record.id = record.id + "|" + species + "|" + lineage
+            record.description = ""
     return alignment
 
 
