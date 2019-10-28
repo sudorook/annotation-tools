@@ -230,13 +230,11 @@ def import_pfam(file_in, db_out, table_name, fts=False):
             table_name
         )
         cmd += "END TRANSACTION;"
-    print(cmd)
     cur.executescript(cmd)
 
     with open(file_in, "r") as handle:
         for line in handle.readlines():
             row = tuple([field.strip() for field in line.split("\t")])
-            print(row)
             cmd = "INSERT INTO %s(" % (table_name) + fields + ")\n"
             cmd += "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);"
             cur.execute(cmd, row)
