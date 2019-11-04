@@ -6,6 +6,20 @@ import sqlite3
 from Bio import SeqIO
 
 
+def truncate(sequence):
+    """ Do nothing. Just a placeholder. """
+    string = str(sequence)
+    return string.split()[0]
+
+
+def expand(sequence):
+    """ Permute the string """
+    string = str(sequence)
+    string_length = len(string)
+    return " ".join([string[idx:string_length]
+                     for idx in range(0, string_length)])
+
+
 def import_accession2taxid(file_in, db_out, table_name):
     """ Import the dead_prot.accession2taxid file. """
     fields = ["[accession]", "[accession.version]", "[taxid]", "[gi]"]
@@ -80,34 +94,37 @@ def import_nr(file_in, db_out, table_name, fts=False):
     fields = ",".join(["[accession.version]", "[sequence]"])
 
     conn = sqlite3.connect(db_out)
+    if fts:
+        conn.create_function("compress", 1, truncate)
+        conn.create_function("uncompress", 1, expand)
+
     cur = conn.cursor()
 
     # initialize the database
     cmd = "PRAGMA synchronous = OFF;\n"
     cmd += "PRAGMA journal_mode = MEMORY;\n"
+    cmd += "BEGIN TRANSACTION;\n"
+    cmd += "DROP TABLE IF EXISTS `%s`;\n" % (table_name)
     if fts:
-        cmd += "BEGIN TRANSACTION;\n"
-        cmd += "DROP TABLE IF EXISTS `%s`;\n" % (table_name)
         cmd += "CREATE VIRTUAL TABLE `%s` using fts4(\n" % (table_name)
         cmd += "  `accession.version` varchar(16) NOT NULL\n"
         cmd += ",  `sequence` text NOT NULL\n"
-        cmd += ");\n"
-        cmd += "END TRANSACTION;"
+        cmd += ",  compress=compress\n"
+        cmd += ",  uncompress=uncompress\n"
     else:
-        cmd += "BEGIN TRANSACTION;\n"
-        cmd += "DROP TABLE IF EXISTS `%s`;\n" % (table_name)
         cmd += "CREATE TABLE `%s` (\n" % (table_name)
         cmd += "  `accession.version` varchar(16) NOT NULL\n"
         cmd += ",  `sequence` text NOT NULL\n"
         cmd += ",  PRIMARY KEY (`accession.version`)\n"
         cmd += ",  UNIQUE (`accession.version`)\n"
-        cmd += ");\n"
-        cmd += "END TRANSACTION;"
+    cmd += ");\n"
+    cmd += "END TRANSACTION;"
     cur.executescript(cmd)
 
     with open(file_in, "r") as handle:
         for record in SeqIO.parse(handle, "fasta"):
-            row = tuple([record.id, str(record.seq)])
+            row = tuple([record.id,
+                         expand(str(record.seq))])
             cmd = "INSERT INTO %s(" % (table_name) + fields + ")\n"
             cmd += "VALUES(?,?);"
             cur.execute(cmd, row)
