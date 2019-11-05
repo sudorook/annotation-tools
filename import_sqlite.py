@@ -16,8 +16,9 @@ def expand(sequence):
     """ Permute the string """
     string = str(sequence)
     string_length = len(string)
-    return " ".join([string[idx:string_length]
-                     for idx in range(0, string_length)])
+    return " ".join(
+        [string[idx:string_length] for idx in range(0, string_length)]
+    )
 
 
 def import_accession2taxid(file_in, db_out, table_name):
@@ -133,8 +134,7 @@ def import_nr(file_in, db_out, table_name):
             cur.execute(cmd, row)
 
             # Add entry to FTS database
-            row = tuple([record.id,
-                         expand(str(record.seq))])
+            row = tuple([record.id, expand(str(record.seq))])
             cmd = "INSERT INTO %s(" % (table_fts) + fields + ")\n"
             cmd += "VALUES(?,?);"
             cur.execute(cmd, row)
@@ -172,12 +172,7 @@ def import_pfam(file_in, db_out, table_name):
             "[swissprot]",
         ]
     )
-    fields_fts = ",".join(
-        [
-            "[pfamseq_acc]",
-            "[sequence]",
-        ]
-    )
+    fields_fts = ",".join(["[pfamseq_acc]", "[sequence]"])
     table = table_name
     table_fts = table_name + "_fts"
 
@@ -222,16 +217,40 @@ def import_pfam(file_in, db_out, table_name):
     cmd += ",  CONSTRAINT `FK_pfamseq_1` FOREIGN KEY (`ncbi_taxid`) REFERENCES `ncbi_taxonomy` (`ncbi_taxid`) ON DELETE CASCADE ON UPDATE NO ACTION\n"
     cmd += ",  CONSTRAINT `fk_pfamseq_evidence1` FOREIGN KEY (`evidence`) REFERENCES `evidence` (`evidence`) ON DELETE NO ACTION ON UPDATE NO ACTION\n"
     cmd += ");\n"
-    cmd += 'CREATE INDEX "idx_pfamseq_ncbi_taxid" ON "%s" (`ncbi_taxid`);\n' % (table)
+    cmd += (
+        'CREATE INDEX "idx_pfamseq_ncbi_taxid" ON "%s" (`ncbi_taxid`);\n'
+        % (table)
+    )
     cmd += 'CREATE INDEX "idx_pfamseq_crc64" ON "%s" (`crc64`);\n' % (table)
-    cmd += 'CREATE INDEX "idx_pfamseq_pfamseq_id" ON "%s" (`pfamseq_id`);\n' % (table)
-    cmd += 'CREATE INDEX "idx_pfamseq_pfamseq_architecture_idx" ON "%s" (`auto_architecture`);\n' % (table)
-    cmd += 'CREATE INDEX "idx_pfamseq_pfamseq_acc_version" ON "%s" (`pfamseq_acc`,`seq_version`);\n' % (table)
+    cmd += (
+        'CREATE INDEX "idx_pfamseq_pfamseq_id" ON "%s" (`pfamseq_id`);\n'
+        % (table)
+    )
+    cmd += (
+        'CREATE INDEX "idx_pfamseq_pfamseq_architecture_idx" ON "%s" (`auto_architecture`);\n'
+        % (table)
+    )
+    cmd += (
+        'CREATE INDEX "idx_pfamseq_pfamseq_acc_version" ON "%s" (`pfamseq_acc`,`seq_version`);\n'
+        % (table)
+    )
     cmd += 'CREATE INDEX "idx_pfamseq_md5" ON "%s" (`md5`);\n' % (table)
-    cmd += 'CREATE INDEX "idx_pfamseq_pfamseq_tax_idx" ON "%s" (`taxonomy`);\n' % (table)
-    cmd += 'CREATE INDEX "idx_pfamseq_fk_pfamseq_evidence1_idx" ON "%s" (`evidence`);\n' % (table)
-    cmd += 'CREATE INDEX "idx_pfamseq_fragment_idx" ON "%s" (`is_fragment`);\n' % (table)
-    cmd += 'CREATE INDEX "idx_pfamseq_swissprot_idx" ON "%s" (`swissprot`);\n' % (table)
+    cmd += (
+        'CREATE INDEX "idx_pfamseq_pfamseq_tax_idx" ON "%s" (`taxonomy`);\n'
+        % (table)
+    )
+    cmd += (
+        'CREATE INDEX "idx_pfamseq_fk_pfamseq_evidence1_idx" ON "%s" (`evidence`);\n'
+        % (table)
+    )
+    cmd += (
+        'CREATE INDEX "idx_pfamseq_fragment_idx" ON "%s" (`is_fragment`);\n'
+        % (table)
+    )
+    cmd += (
+        'CREATE INDEX "idx_pfamseq_swissprot_idx" ON "%s" (`swissprot`);\n'
+        % (table)
+    )
     cmd += "END TRANSACTION;"
     cur.executescript(cmd)
 

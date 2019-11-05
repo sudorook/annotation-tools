@@ -14,8 +14,9 @@ def expand(sequence):
     """ Permute the string """
     string = str(sequence)
     string_length = len(string)
-    return " ".join([string[idx:string_length]
-                     for idx in range(0, string_length)])
+    return " ".join(
+        [string[idx:string_length] for idx in range(0, string_length)]
+    )
 
 
 def connect_db(database):
@@ -46,7 +47,10 @@ def search_db(conn, table, sequence):
 def search_db_fts(conn, table, sequence):
     """ search nr db """
     cur = conn.cursor()
-    cmd = "SELECT * FROM `%s` WHERE `sequence` MATCH '%s*';" % (table, sequence)
+    cmd = "SELECT * FROM `%s` WHERE `sequence` MATCH '%s*';" % (
+        table,
+        sequence,
+    )
     cur.execute(cmd)
     res = cur.fetchone()
     if res:
