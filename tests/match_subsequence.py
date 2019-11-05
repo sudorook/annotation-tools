@@ -76,11 +76,13 @@ def main():
     conn = connect_db(database)
 
     table = "nr_fts"
+    print(table)
     for sequence in sequences:
         print("Query:\t" + sequence)
         search_db_fts(conn, table, sequence)
 
     table = "nr"
+    print(table)
     conn = connect_db(database)
     for sequence in sequences:
         print("Query:\t" + sequence)
@@ -100,12 +102,13 @@ def main():
     ]
     conn = connect_db(database)
     table = "pfamseq_fts"
+    print(table)
     for sequence in sequences:
         print("Query:\t" + sequence)
         search_db_fts(conn, table, sequence)
 
     table = "pfamseq"
-    conn = connect_db(database)
+    print(table)
     for sequence in sequences:
         print("Query:\t" + sequence)
         search_db(conn, table, sequence)
