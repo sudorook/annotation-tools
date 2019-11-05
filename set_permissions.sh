@@ -10,8 +10,8 @@ set -eu
 data_dirs=(raw_data data)
 
 files=(nr dead_prot.accession2taxid prot.accession2taxid fullnamelineage.dmp
-       nr.db nr_fts4.db taxonomy.db dead_prot_accession2taxid.db
-       prot_accession2taxid.db pfamseq.db pfamseq_fts4.db)
+       nr.db taxonomy.db dead_prot_accession2taxid.db prot_accession2taxid.db
+       pfamseq.db)
 
 for dir in ${data_dirs[@]}; do
   if [ -d "${dir}" ]; then
