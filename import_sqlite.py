@@ -123,27 +123,41 @@ def import_nr(file_in, db_out, table_name):
     cur.executescript(cmd)
 
     # Insert the data
+    rows = []
+    rows_fts = []
+    block_size = 10000
     with open(file_in, "r") as handle:
-        block_size = 10000
-        cur.execute("BEGIN TRANSACTION;")
         for i, record in enumerate(SeqIO.parse(handle, "fasta")):
             # Add entry to regular database
-            row = tuple([record.id, str(record.seq)])
-            cmd = "INSERT INTO %s(" % (table) + fields + ")\n"
-            cmd += "VALUES(?,?);"
-            cur.execute(cmd, row)
-
-            # Add entry to FTS database
-            row = tuple([record.id, expand(str(record.seq))])
-            cmd = "INSERT INTO %s(" % (table_fts) + fields + ")\n"
-            cmd += "VALUES(?,?);"
-            cur.execute(cmd, row)
+            row_data = [record.id, str(record.seq)]
+            rows.append(tuple(row_data))
+            rows_fts.append(tuple([row_data[0], expand(row_data[1])]))
 
             # Commit changes to databases after block_size records
             if not i % block_size:
-                cur.execute("COMMIT;")
-                cur.execute("BEGIN TRANSACTION;")
-        cur.execute("END TRANSACTION;")
+                # Add record to regular table.
+                cmd = "INSERT INTO %s(" % (table) + fields + ")\n"
+                cmd += "VALUES(?,?);"
+                cur.executemany(cmd, rows)
+
+                # Add entry to FTS table
+                cmd = "INSERT INTO %s(" % (table_fts) + fields + ")\n"
+                cmd += "VALUES(?,?);"
+                cur.executemany(cmd, rows_fts)
+
+                conn.commit()
+                rows.clear()
+                rows_fts.clear()
+
+    # Remainder
+    cmd = "INSERT INTO %s(" % (table) + fields + ")\n"
+    cmd += "VALUES(?,?);"
+    cur.executemany(cmd, rows)
+
+    cmd = "INSERT INTO %s(" % (table_fts) + fields + ")\n"
+    cmd += "VALUES(?,?);"
+    cur.executemany(cmd, rows_fts)
+
     conn.commit()
     conn.close()
 
@@ -254,27 +268,39 @@ def import_pfam(file_in, db_out, table_name):
     cmd += "END TRANSACTION;"
     cur.executescript(cmd)
 
+    rows = []
+    rows_fts = []
+    block_size = 10000
     with open(file_in, "r") as handle:
-        block_size = 10000
-        cur.execute("BEGIN TRANSACTION;")
         for i, line in enumerate(handle.readlines()):
             # Add record to regular table.
-            row = tuple([field.strip() for field in line.split("\t")])
-            cmd = "INSERT INTO %s(" % (table) + fields + ")\n"
-            cmd += "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);"
-            cur.execute(cmd, row)
-
-            # Add record to FTS table.
             row_data = [field.strip() for field in line.split("\t")]
-            row = tuple([row_data[0], expand(row_data[11])])
-            cmd = "INSERT INTO %s(" % (table_fts) + fields_fts + ")\n"
-            cmd += "VALUES(?,?);"
-            cur.execute(cmd, row)
+            rows.append(tuple(row_data))
+            rows_fts.append(tuple([row_data[0], expand(row_data[11])]))
 
             # Commit changes to databases after block_size records
             if not i % block_size:
-                cur.execute("COMMIT;")
-                cur.execute("BEGIN TRANSACTION;")
+                cmd = "INSERT INTO %s(" % (table) + fields + ")\n"
+                cmd += "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);"
+                cur.executemany(cmd, rows)
+
+                cmd = "INSERT INTO %s(" % (table_fts) + fields_fts + ")\n"
+                cmd += "VALUES(?,?);"
+                cur.executemany(cmd, rows_fts)
+
+                conn.commit()
+                rows.clear()
+                rows_fts.clear()
+
+    # Remainder
+    cmd = "INSERT INTO %s(" % (table) + fields + ")\n"
+    cmd += "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);"
+    cur.executemany(cmd, rows)
+
+    cmd = "INSERT INTO %s(" % (table_fts) + fields_fts + ")\n"
+    cmd += "VALUES(?,?);"
+    cur.executemany(cmd, rows_fts)
+
     conn.commit()
     conn.close()
 
