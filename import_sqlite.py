@@ -272,7 +272,7 @@ def import_pfam(file_in, db_out, table_name):
     rows_fts = []
     block_size = 10000
     with open(file_in, "r") as handle:
-        for i, line in enumerate(handle.readlines()):
+        for i, line in enumerate(handle):
             # Add record to regular table.
             row_data = [field.strip() for field in line.split("\t")]
             rows.append(tuple(row_data))
