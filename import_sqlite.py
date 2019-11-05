@@ -89,50 +89,66 @@ def import_taxonomy(file_in, db_out, table_name):
     conn.close()
 
 
-def import_nr(file_in, db_out, table_name, fts=False):
+def import_nr(file_in, db_out, table_name):
     """ Import the nr (non-redundant) protein sequences. """
     fields = ",".join(["[accession.version]", "[sequence]"])
+    table = table_name
+    table_fts = table_name + "_fts"
 
     conn = sqlite3.connect(db_out)
-    if fts:
-        conn.create_function("compress", 1, truncate)
-        conn.create_function("uncompress", 1, expand)
-
+    conn.create_function("compress", 1, truncate)
+    conn.create_function("uncompress", 1, expand)
     cur = conn.cursor()
 
-    # initialize the database
+    # Initialize the database
     cmd = "PRAGMA synchronous = OFF;\n"
     cmd += "PRAGMA journal_mode = MEMORY;\n"
     cmd += "BEGIN TRANSACTION;\n"
-    cmd += "DROP TABLE IF EXISTS `%s`;\n" % (table_name)
-    if fts:
-        cmd += "CREATE VIRTUAL TABLE `%s` using fts4(\n" % (table_name)
-        cmd += "  `accession.version` varchar(16) NOT NULL\n"
-        cmd += ",  `sequence` text NOT NULL\n"
-        cmd += ",  compress=compress\n"
-        cmd += ",  uncompress=uncompress\n"
-    else:
-        cmd += "CREATE TABLE `%s` (\n" % (table_name)
-        cmd += "  `accession.version` varchar(16) NOT NULL\n"
-        cmd += ",  `sequence` text NOT NULL\n"
-        cmd += ",  PRIMARY KEY (`accession.version`)\n"
-        cmd += ",  UNIQUE (`accession.version`)\n"
+    cmd += "DROP TABLE IF EXISTS `%s`;\n" % (table)
+    cmd += "CREATE TABLE `%s` (\n" % (table)
+    cmd += "  `accession.version` varchar(16) NOT NULL\n"
+    cmd += ",  `sequence` text NOT NULL\n"
+    cmd += ",  PRIMARY KEY (`accession.version`)\n"
+    cmd += ",  UNIQUE (`accession.version`)\n"
+    cmd += ");\n"
+    cmd += "DROP TABLE IF EXISTS `%s`;\n" % (table_fts)
+    cmd += "CREATE VIRTUAL TABLE `%s` using fts4(\n" % (table_fts)
+    cmd += "  `accession.version` varchar(16) NOT NULL\n"
+    cmd += ",  `sequence` text NOT NULL\n"
+    cmd += ",  compress=compress\n"
+    cmd += ",  uncompress=uncompress\n"
     cmd += ");\n"
     cmd += "END TRANSACTION;"
     cur.executescript(cmd)
 
+    # Insert the data
     with open(file_in, "r") as handle:
-        for record in SeqIO.parse(handle, "fasta"):
-            row = tuple([record.id,
-                         expand(str(record.seq))])
-            cmd = "INSERT INTO %s(" % (table_name) + fields + ")\n"
+        block_size = 10000
+        cur.execute("BEGIN TRANSACTION;")
+        for i, record in enumerate(SeqIO.parse(handle, "fasta")):
+            # Add entry to regular database
+            row = tuple([record.id, str(record.seq)])
+            cmd = "INSERT INTO %s(" % (table) + fields + ")\n"
             cmd += "VALUES(?,?);"
             cur.execute(cmd, row)
+
+            # Add entry to FTS database
+            row = tuple([record.id,
+                         expand(str(record.seq))])
+            cmd = "INSERT INTO %s(" % (table_fts) + fields + ")\n"
+            cmd += "VALUES(?,?);"
+            cur.execute(cmd, row)
+
+            # Commit changes to databases after block_size records
+            if not i % block_size:
+                cur.execute("COMMIT;")
+                cur.execute("BEGIN TRANSACTION;")
+        cur.execute("END TRANSACTION;")
     conn.commit()
     conn.close()
 
 
-def import_pfam(file_in, db_out, table_name, fts=False):
+def import_pfam(file_in, db_out, table_name):
     """ Import the Pfam protein sequences. """
     fields = ",".join(
         [
@@ -156,105 +172,90 @@ def import_pfam(file_in, db_out, table_name, fts=False):
             "[swissprot]",
         ]
     )
+    fields_fts = ",".join(
+        [
+            "[pfamseq_acc]",
+            "[sequence]",
+        ]
+    )
+    table = table_name
+    table_fts = table_name + "_fts"
 
     conn = sqlite3.connect(db_out)
+    conn.create_function("compress", 1, truncate)
+    conn.create_function("uncompress", 1, expand)
     cur = conn.cursor()
 
-    # initialize the database
-    cmd = ""
-    if fts:
-        cmd += "PRAGMA synchronous = OFF;\n"
-        cmd += "PRAGMA journal_mode = MEMORY;\n"
-        cmd += "BEGIN TRANSACTION;\n"
-        cmd += "DROP TABLE IF EXISTS `%s`;\n" % (table_name)
-        cmd += "CREATE VIRTUAL TABLE `%s` using fts4(\n" % (table_name)
-        cmd += "  `pfamseq_acc` varchar(10) NOT NULL\n"
-        cmd += ",  `pfamseq_id` varchar(16) NOT NULL\n"
-        cmd += ",  `seq_version` integer NOT NULL\n"
-        cmd += ",  `crc64` varchar(16) NOT NULL\n"
-        cmd += ",  `md5` varchar(32) NOT NULL\n"
-        cmd += ",  `description` text NOT NULL\n"
-        cmd += ",  `evidence` integer NOT NULL\n"
-        cmd += ",  `length` integer NOT NULL DEFAULT '0'\n"
-        cmd += ",  `species` text NOT NULL\n"
-        cmd += ",  `taxonomy` mediumtext\n"
-        cmd += ",  `is_fragment` integer DEFAULT NULL\n"
-        cmd += ",  `sequence` blob NOT NULL\n"
-        cmd += ",  `updated` timestamp NOT NULL DEFAULT current_timestamp\n"
-        cmd += ",  `created` datetime DEFAULT NULL\n"
-        cmd += ",  `ncbi_taxid` integer  NOT NULL DEFAULT '0'\n"
-        cmd += ",  `auto_architecture` integer  DEFAULT NULL\n"
-        cmd += ",  `treefam_acc` varchar(8) DEFAULT NULL\n"
-        cmd += ",  `swissprot` integer DEFAULT '0'\n"
-        cmd += ");\n"
-        cmd += "END TRANSACTION;"
-    else:
-        cmd += "PRAGMA synchronous = OFF;\n"
-        cmd += "PRAGMA journal_mode = MEMORY;\n"
-        cmd += "BEGIN TRANSACTION;\n"
-        cmd += "DROP TABLE IF EXISTS `%s`;\n" % (table_name)
-        cmd += "CREATE TABLE `%s` (\n" % (table_name)
-        cmd += "  `pfamseq_acc` varchar(10) NOT NULL\n"
-        cmd += ",  `pfamseq_id` varchar(16) NOT NULL\n"
-        cmd += ",  `seq_version` integer NOT NULL\n"
-        cmd += ",  `crc64` varchar(16) NOT NULL\n"
-        cmd += ",  `md5` varchar(32) NOT NULL\n"
-        cmd += ",  `description` text NOT NULL\n"
-        cmd += ",  `evidence` integer NOT NULL\n"
-        cmd += ",  `length` integer NOT NULL DEFAULT '0'\n"
-        cmd += ",  `species` text NOT NULL\n"
-        cmd += ",  `taxonomy` mediumtext\n"
-        cmd += ",  `is_fragment` integer DEFAULT NULL\n"
-        cmd += ",  `sequence` blob NOT NULL\n"
-        cmd += ",  `updated` timestamp NOT NULL DEFAULT current_timestamp\n"
-        cmd += ",  `created` datetime DEFAULT NULL\n"
-        cmd += ",  `ncbi_taxid` integer  NOT NULL DEFAULT '0'\n"
-        cmd += ",  `auto_architecture` integer  DEFAULT NULL\n"
-        cmd += ",  `treefam_acc` varchar(8) DEFAULT NULL\n"
-        cmd += ",  `swissprot` integer DEFAULT '0'\n"
-        cmd += ",  PRIMARY KEY (`pfamseq_acc`)\n"
-        cmd += ",  UNIQUE (`pfamseq_acc`)\n"
-        cmd += ",  CONSTRAINT `FK_pfamseq_1` FOREIGN KEY (`ncbi_taxid`) REFERENCES `ncbi_taxonomy` (`ncbi_taxid`) ON DELETE CASCADE ON UPDATE NO ACTION\n"
-        cmd += ",  CONSTRAINT `fk_pfamseq_evidence1` FOREIGN KEY (`evidence`) REFERENCES `evidence` (`evidence`) ON DELETE NO ACTION ON UPDATE NO ACTION\n"
-        cmd += ");\n"
-        cmd += 'CREATE INDEX "idx_pfamseq_ncbi_taxid" ON "%s" (`ncbi_taxid`);\n' % (
-            table_name
-        )
-        cmd += 'CREATE INDEX "idx_pfamseq_crc64" ON "%s" (`crc64`);\n' % (table_name)
-        cmd += 'CREATE INDEX "idx_pfamseq_pfamseq_id" ON "%s" (`pfamseq_id`);\n' % (
-            table_name
-        )
-        cmd += (
-            'CREATE INDEX "idx_pfamseq_pfamseq_architecture_idx" ON "%s" (`auto_architecture`);\n'
-            % (table_name)
-        )
-        cmd += (
-            'CREATE INDEX "idx_pfamseq_pfamseq_acc_version" ON "%s" (`pfamseq_acc`,`seq_version`);\n'
-            % (table_name)
-        )
-        cmd += 'CREATE INDEX "idx_pfamseq_md5" ON "%s" (`md5`);\n' % (table_name)
-        cmd += 'CREATE INDEX "idx_pfamseq_pfamseq_tax_idx" ON "%s" (`taxonomy`);\n' % (
-            table_name
-        )
-        cmd += (
-            'CREATE INDEX "idx_pfamseq_fk_pfamseq_evidence1_idx" ON "%s" (`evidence`);\n'
-            % (table_name)
-        )
-        cmd += 'CREATE INDEX "idx_pfamseq_fragment_idx" ON "%s" (`is_fragment`);\n' % (
-            table_name
-        )
-        cmd += 'CREATE INDEX "idx_pfamseq_swissprot_idx" ON "%s" (`swissprot`);\n' % (
-            table_name
-        )
-        cmd += "END TRANSACTION;"
+    # Initialize the database
+    cmd = "PRAGMA synchronous = OFF;\n"
+    cmd += "PRAGMA journal_mode = MEMORY;\n"
+    cmd += "BEGIN TRANSACTION;\n"
+    cmd += "DROP TABLE IF EXISTS `%s`;\n" % (table)
+    cmd += "DROP TABLE IF EXISTS `%s`;\n" % (table_fts)
+    cmd += "CREATE VIRTUAL TABLE `%s` using fts4(\n" % (table_fts)
+    cmd += "  `pfamseq_acc` varchar(10) NOT NULL\n"
+    cmd += ",  `sequence` blob NOT NULL\n"
+    cmd += ",  compress=compress\n"
+    cmd += ",  uncompress=uncompress\n"
+    cmd += ");\n"
+    cmd += "CREATE TABLE `%s` (\n" % (table)
+    cmd += "  `pfamseq_acc` varchar(10) NOT NULL\n"
+    cmd += ",  `pfamseq_id` varchar(16) NOT NULL\n"
+    cmd += ",  `seq_version` integer NOT NULL\n"
+    cmd += ",  `crc64` varchar(16) NOT NULL\n"
+    cmd += ",  `md5` varchar(32) NOT NULL\n"
+    cmd += ",  `description` text NOT NULL\n"
+    cmd += ",  `evidence` integer NOT NULL\n"
+    cmd += ",  `length` integer NOT NULL DEFAULT '0'\n"
+    cmd += ",  `species` text NOT NULL\n"
+    cmd += ",  `taxonomy` mediumtext\n"
+    cmd += ",  `is_fragment` integer DEFAULT NULL\n"
+    cmd += ",  `sequence` blob NOT NULL\n"
+    cmd += ",  `updated` timestamp NOT NULL DEFAULT current_timestamp\n"
+    cmd += ",  `created` datetime DEFAULT NULL\n"
+    cmd += ",  `ncbi_taxid` integer  NOT NULL DEFAULT '0'\n"
+    cmd += ",  `auto_architecture` integer  DEFAULT NULL\n"
+    cmd += ",  `treefam_acc` varchar(8) DEFAULT NULL\n"
+    cmd += ",  `swissprot` integer DEFAULT '0'\n"
+    cmd += ",  PRIMARY KEY (`pfamseq_acc`)\n"
+    cmd += ",  UNIQUE (`pfamseq_acc`)\n"
+    cmd += ",  CONSTRAINT `FK_pfamseq_1` FOREIGN KEY (`ncbi_taxid`) REFERENCES `ncbi_taxonomy` (`ncbi_taxid`) ON DELETE CASCADE ON UPDATE NO ACTION\n"
+    cmd += ",  CONSTRAINT `fk_pfamseq_evidence1` FOREIGN KEY (`evidence`) REFERENCES `evidence` (`evidence`) ON DELETE NO ACTION ON UPDATE NO ACTION\n"
+    cmd += ");\n"
+    cmd += 'CREATE INDEX "idx_pfamseq_ncbi_taxid" ON "%s" (`ncbi_taxid`);\n' % (table)
+    cmd += 'CREATE INDEX "idx_pfamseq_crc64" ON "%s" (`crc64`);\n' % (table)
+    cmd += 'CREATE INDEX "idx_pfamseq_pfamseq_id" ON "%s" (`pfamseq_id`);\n' % (table)
+    cmd += 'CREATE INDEX "idx_pfamseq_pfamseq_architecture_idx" ON "%s" (`auto_architecture`);\n' % (table)
+    cmd += 'CREATE INDEX "idx_pfamseq_pfamseq_acc_version" ON "%s" (`pfamseq_acc`,`seq_version`);\n' % (table)
+    cmd += 'CREATE INDEX "idx_pfamseq_md5" ON "%s" (`md5`);\n' % (table)
+    cmd += 'CREATE INDEX "idx_pfamseq_pfamseq_tax_idx" ON "%s" (`taxonomy`);\n' % (table)
+    cmd += 'CREATE INDEX "idx_pfamseq_fk_pfamseq_evidence1_idx" ON "%s" (`evidence`);\n' % (table)
+    cmd += 'CREATE INDEX "idx_pfamseq_fragment_idx" ON "%s" (`is_fragment`);\n' % (table)
+    cmd += 'CREATE INDEX "idx_pfamseq_swissprot_idx" ON "%s" (`swissprot`);\n' % (table)
+    cmd += "END TRANSACTION;"
     cur.executescript(cmd)
 
     with open(file_in, "r") as handle:
-        for line in handle.readlines():
+        block_size = 10000
+        cur.execute("BEGIN TRANSACTION;")
+        for i, line in enumerate(handle.readlines()):
+            # Add record to regular table.
             row = tuple([field.strip() for field in line.split("\t")])
-            cmd = "INSERT INTO %s(" % (table_name) + fields + ")\n"
+            cmd = "INSERT INTO %s(" % (table) + fields + ")\n"
             cmd += "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);"
             cur.execute(cmd, row)
+
+            # Add record to FTS table.
+            row_data = [field.strip() for field in line.split("\t")]
+            row = tuple([row_data[0], expand(row_data[11])])
+            cmd = "INSERT INTO %s(" % (table_fts) + fields_fts + ")\n"
+            cmd += "VALUES(?,?);"
+            cur.execute(cmd, row)
+
+            # Commit changes to databases after block_size records
+            if not i % block_size:
+                cur.execute("COMMIT;")
+                cur.execute("BEGIN TRANSACTION;")
     conn.commit()
     conn.close()
 
@@ -291,27 +292,17 @@ def main():
     nr_prot_file = "raw_data/nr"
     nr_prot_db = "data/nr.db"
     nr_prot_name = "nr"
-    nr_prot_fts_db = "data/nr_fts4.db"
-    nr_prot_fts_name = "nr_fts"
-
-    print("Importing non-redundant (nr) protein database.")
-    import_nr(nr_prot_file, nr_prot_db, nr_prot_name, fts=False)
 
     print("Importing non-redundant (nr) database with full-text search.")
-    import_nr(nr_prot_file, nr_prot_fts_db, nr_prot_fts_name, fts=True)
+    import_nr(nr_prot_file, nr_prot_db, nr_prot_name)
 
     # Pfam
     pfam_file = "raw_data/pfamseq.txt"
     pfam_db = "data/pfamseq.db"
     pfam_name = "pfamseq"
-    pfam_fts_db = "data/pfamseq_fts4.db"
-    pfam_fts_name = "pfamseq_fts"
-
-    print("Importing Pfam sequences.")
-    import_pfam(pfam_file, pfam_db, pfam_name, fts=False)
 
     print("Importing Pfam sequences with full-text search.")
-    import_pfam(pfam_file, pfam_fts_db, pfam_fts_name, fts=True)
+    import_pfam(pfam_file, pfam_db, pfam_name)
 
     print("Done!")
 
