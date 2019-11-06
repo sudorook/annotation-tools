@@ -112,6 +112,7 @@ def import_nr(file_in, db_out, table_name):
     cmd += ",  PRIMARY KEY (`accession.version`)\n"
     cmd += ",  UNIQUE (`accession.version`)\n"
     cmd += ");\n"
+    cmd += 'CREATE INDEX "idx_nr_accession" ON "%s" (`accession.version`);\n' % (table)
     cmd += "DROP TABLE IF EXISTS `%s`;\n" % (table_fts)
     cmd += "CREATE VIRTUAL TABLE `%s` using fts4(\n" % (table_fts)
     cmd += "  `accession.version` varchar(16) NOT NULL\n"
@@ -169,8 +170,6 @@ def import_pfam(file_in, db_out, table_name):
             "[pfamseq_acc]",
             "[pfamseq_id]",
             "[seq_version]",
-            "[crc64]",
-            "[md5]",
             "[description]",
             "[evidence]",
             "[length]",
@@ -178,8 +177,6 @@ def import_pfam(file_in, db_out, table_name):
             "[taxonomy]",
             "[is_fragment]",
             "[sequence]",
-            "[updated]",
-            "[created]",
             "[ncbi_taxid]",
             "[auto_architecture]",
             "[treefam_acc]",
@@ -211,8 +208,6 @@ def import_pfam(file_in, db_out, table_name):
     cmd += "  `pfamseq_acc` varchar(10) NOT NULL\n"
     cmd += ",  `pfamseq_id` varchar(16) NOT NULL\n"
     cmd += ",  `seq_version` integer NOT NULL\n"
-    cmd += ",  `crc64` varchar(16) NOT NULL\n"
-    cmd += ",  `md5` varchar(32) NOT NULL\n"
     cmd += ",  `description` text NOT NULL\n"
     cmd += ",  `evidence` integer NOT NULL\n"
     cmd += ",  `length` integer NOT NULL DEFAULT '0'\n"
@@ -220,22 +215,17 @@ def import_pfam(file_in, db_out, table_name):
     cmd += ",  `taxonomy` mediumtext\n"
     cmd += ",  `is_fragment` integer DEFAULT NULL\n"
     cmd += ",  `sequence` blob NOT NULL\n"
-    cmd += ",  `updated` timestamp NOT NULL DEFAULT current_timestamp\n"
-    cmd += ",  `created` datetime DEFAULT NULL\n"
     cmd += ",  `ncbi_taxid` integer  NOT NULL DEFAULT '0'\n"
     cmd += ",  `auto_architecture` integer  DEFAULT NULL\n"
     cmd += ",  `treefam_acc` varchar(8) DEFAULT NULL\n"
     cmd += ",  `swissprot` integer DEFAULT '0'\n"
     cmd += ",  PRIMARY KEY (`pfamseq_acc`)\n"
     cmd += ",  UNIQUE (`pfamseq_acc`)\n"
-    cmd += ",  CONSTRAINT `FK_pfamseq_1` FOREIGN KEY (`ncbi_taxid`) REFERENCES `ncbi_taxonomy` (`ncbi_taxid`) ON DELETE CASCADE ON UPDATE NO ACTION\n"
-    cmd += ",  CONSTRAINT `fk_pfamseq_evidence1` FOREIGN KEY (`evidence`) REFERENCES `evidence` (`evidence`) ON DELETE NO ACTION ON UPDATE NO ACTION\n"
     cmd += ");\n"
     cmd += (
         'CREATE INDEX "idx_pfamseq_ncbi_taxid" ON "%s" (`ncbi_taxid`);\n'
         % (table)
     )
-    cmd += 'CREATE INDEX "idx_pfamseq_crc64" ON "%s" (`crc64`);\n' % (table)
     cmd += (
         'CREATE INDEX "idx_pfamseq_pfamseq_id" ON "%s" (`pfamseq_id`);\n'
         % (table)
@@ -245,20 +235,11 @@ def import_pfam(file_in, db_out, table_name):
         % (table)
     )
     cmd += (
-        'CREATE INDEX "idx_pfamseq_pfamseq_acc_version" ON "%s" (`pfamseq_acc`,`seq_version`);\n'
-        % (table)
-    )
-    cmd += 'CREATE INDEX "idx_pfamseq_md5" ON "%s" (`md5`);\n' % (table)
-    cmd += (
         'CREATE INDEX "idx_pfamseq_pfamseq_tax_idx" ON "%s" (`taxonomy`);\n'
         % (table)
     )
     cmd += (
         'CREATE INDEX "idx_pfamseq_fk_pfamseq_evidence1_idx" ON "%s" (`evidence`);\n'
-        % (table)
-    )
-    cmd += (
-        'CREATE INDEX "idx_pfamseq_fragment_idx" ON "%s" (`is_fragment`);\n'
         % (table)
     )
     cmd += (
@@ -275,13 +256,17 @@ def import_pfam(file_in, db_out, table_name):
         for i, line in enumerate(handle):
             # Add record to regular table.
             row_data = [field.strip() for field in line.split("\t")]
+            row_data.pop(3)  # crc64 checksum
+            row_data.pop(3)  # md5 checksum
+            row_data.pop(10) # updated date
+            row_data.pop(10) # created date
             rows.append(tuple(row_data))
-            rows_fts.append(tuple([row_data[0], expand(row_data[11])]))
+            rows_fts.append(tuple([row_data[0], expand(row_data[9])]))
 
             # Commit changes to databases after block_size records
             if not i % block_size:
                 cmd = "INSERT INTO %s(" % (table) + fields + ")\n"
-                cmd += "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);"
+                cmd += "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?);"
                 cur.executemany(cmd, rows)
 
                 cmd = "INSERT INTO %s(" % (table_fts) + fields_fts + ")\n"
@@ -294,7 +279,7 @@ def import_pfam(file_in, db_out, table_name):
 
     # Remainder
     cmd = "INSERT INTO %s(" % (table) + fields + ")\n"
-    cmd += "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);"
+    cmd += "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?);"
     cur.executemany(cmd, rows)
 
     cmd = "INSERT INTO %s(" % (table_fts) + fields_fts + ")\n"
